@@ -135,26 +135,33 @@ def _pd_ewm(pd_object, pd_object_cm, how, *args, **kwargs):
     :param how: 代表方法操作名称，eg. mean, std, var
     :return:
     """
-    if g_pandas_has_ewm:
-        """pandas版本高，使用如pd_object.ewm直接调用"""
-        ewm_obj = pd_object.ewm(*args, **kwargs)
-        if hasattr(ewm_obj, how):
-            if pd_object_cm is None:
-                return getattr(ewm_obj, how)()
-            # 需要两个pd_object进行的操作
-            return getattr(ewm_obj, how)(pd_object_cm)
+    # if g_pandas_has_ewm:
+    #     """pandas版本高，使用如pd_object.ewm直接调用"""
+    #     ewm_obj = pd_object.ewm(*args, **kwargs)
+    #     if hasattr(ewm_obj, how):
+    #         if pd_object_cm is None:
+    #             return getattr(ewm_obj, how)()
+    #         # 需要两个pd_object进行的操作
+    #         return getattr(ewm_obj, how)(pd_object_cm)
+    # else:
+    #     """pandas版本低，使用如pd.ewmstd方法调用"""
+    #     if how == 'mean':
+    #         # pd.ewma特殊代表加权移动平均，所以使用a替换mean
+    #         how = 'a'
+    #     how_func = 'ewm{}'.format(how)
+    #     if hasattr(pd, how_func):
+    #         if pd_object_cm is None:
+    #             return getattr(pd, how_func)(pd_object, *args, **kwargs)
+    #         # 需要两个pd_object进行的操作
+    #         return getattr(pd, how_func)(pd_object, pd_object_cm, *args, **kwargs)
+    # raise RuntimeError('_pd_ewm {} getattr error'.format(how))
+    ewm_obj = pd_object.ewm(*args, **kwargs)
+    if hasattr(ewm_obj, how):
+        if pd_object_cm is None:
+            return getattr(ewm_obj, how)()
+        return getattr(ewm_obj, how)(pd_object_cm)
     else:
-        """pandas版本低，使用如pd.ewmstd方法调用"""
-        if how == 'mean':
-            # pd.ewma特殊代表加权移动平均，所以使用a替换mean
-            how = 'a'
-        how_func = 'ewm{}'.format(how)
-        if hasattr(pd, how_func):
-            if pd_object_cm is None:
-                return getattr(pd, how_func)(pd_object, *args, **kwargs)
-            # 需要两个pd_object进行的操作
-            return getattr(pd, how_func)(pd_object, pd_object_cm, *args, **kwargs)
-    raise RuntimeError('_pd_ewm {} getattr error'.format(how))
+        raise RuntimeError('ewm object does not have attribute {}'.lformat(how))
 
 
 """没有全部导出，只导出常用的"""
