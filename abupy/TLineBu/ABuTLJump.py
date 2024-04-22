@@ -45,7 +45,7 @@ def calc_jump(kl_pd, jump_diff_factor=1, show=True):
 
     # 提取月振幅volume_mean
     # TODO 做为参数可修改21d
-    change_mean = pd_resample(kl_pd.abs_pct_change, '21D', how='mean')
+    change_mean = kl_pd.abs_pct_change.resample('21D').mean().reindex(kl_pd.index, method='pad')
     """
         eg: change_mean形如
         2014-07-23    0.7940
@@ -61,7 +61,7 @@ def calc_jump(kl_pd, jump_diff_factor=1, show=True):
         2016-07-06    0.6693
     """
     # 提取月成交量均值volume_mean
-    volume_mean = pd_resample(kl_pd.volume, '21D', how='mean')
+    volume_mean = kl_pd.volume.resample('21D').mean().reindex(kl_pd.index, method='pad')
     """
         eg：volume_mean形如
         2014-07-23    1350679
@@ -170,7 +170,12 @@ def calc_jump(kl_pd, jump_diff_factor=1, show=True):
             # 计算出跳空缺口强度
             today['jump_power'] = (today.low - today.pre_close) / jump_diff
 
-            jump_pd = jump_pd.append(today)
+            #jump_pd = jump_pd.concat(today)
+            
+            today_df = pd.DataFrame([today])  # 将today字典转换为单行DataFrame
+            jump_pd = pd.concat([jump_pd, today_df], ignore_index=True)
+
+        
         elif today.p_change < 0 and (today.pre_close - today.high) > jump_diff:
             # 注意向下跳空判断使用today.high，向下跳空 －1
             today['jump'] = -1
@@ -180,7 +185,10 @@ def calc_jump(kl_pd, jump_diff_factor=1, show=True):
             today['jump_diff'] = jump_diff
             # 计算出跳空缺口强度
             today['jump_power'] = (today.pre_close - today.high) / jump_diff
-            jump_pd = jump_pd.append(today)
+            #jump_pd = jump_pd.append(today)
+
+            today_df = pd.DataFrame([today])  # 将today字典转换为单行DataFrame
+            jump_pd = pd.concat([jump_pd, today_df], ignore_index=True)
 
     if show:
         # 通过plot_candle_form_klpd可视化跳空缺口，通过view_indexs参数

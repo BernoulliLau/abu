@@ -14,6 +14,9 @@ from math import pi
 
 import bokeh.plotting as bp
 import matplotlib.pyplot as plt
+import matplotlib.dates as mdates
+from matplotlib.dates import date2num
+
 import numpy as np
 import pandas as pd
 
@@ -39,7 +42,6 @@ K_SAVE_CACHE_HTML_ROOT = os.path.join(ABuEnv.g_project_data_dir, 'save_html')
 
 """暂时只做全据设置，不画量只画价格"""
 g_only_draw_price = False
-
 
 def plot_candle_from_order(order, date_ext=120, day_sum=False, html_bk=False, save=False):
     """
@@ -233,7 +235,7 @@ def _do_plot_candle_html(date, p_open, high, low, close, symbol, save):
 def _do_plot_candle(date, p_open, high, low, close, volume, view_index, symbol, day_sum, save, minute):
     """
     绘制不可交互的k线图
-    param date: 融时间序列交易日时间，pd.DataFrame.index对象
+    param date: 金融时间序列交易日时间，pd.DataFrame.index对象
     :param p_open: 金融时间序列开盘价格序列，np.array对象
     :param high: 金融时间序列最高价格序列，np.array对象
     :param low: 金融时间序列最低价格序列，np.array对象
@@ -244,42 +246,45 @@ def _do_plot_candle(date, p_open, high, low, close, volume, view_index, symbol, 
     :param save: 是否保存可视化结果在本地
     :param minute: 是否是绘制分钟k线图
     """
-
-    # 需要内部import不然每次import abupy都有warning，特别是子进程很烦人
     try:
-        # noinspection PyUnresolvedReferences, PyDeprecation
-        import matplotlib.finance as mpf
+        import mplfinance as mpf
     except ImportError:
-        # 2.2 才会有
-        # noinspection PyUnresolvedReferences, PyDeprecation
-        import matplotlib.mpl_finance as mpf
+        import mpl_finance as mpf
+    market_colors = mpf.make_marketcolors(up='red', down='green', inherit=True)
+
+    # 使用上面的市场颜色来创建一个mplfinance样式
+    mpf_style = mpf.make_mpf_style(base_mpf_style='nightclouds', marketcolors=market_colors)
 
     if not g_only_draw_price:
         # 成交量，价格都绘制
-        # noinspection PyTypeChecker
         fig, (ax1, ax2) = plt.subplots(2, sharex=True, figsize=(20, 12))
     else:
         # 只绘制价格
         fig, ax1 = plt.subplots(figsize=(6, 6))
-    if day_sum:
-        # 端线图绘制
-        qutotes = []
-        for index, (d, o, c, l, h) in enumerate(zip(date, p_open, close, low, high)):
-            d = index if minute else mpf.date2num(d)
-            val = (d, o, c, l, h)
-            qutotes.append(val)
-        # plot_day_summary_oclh接口，与mpf.candlestick_ochl不同，即数据顺序为开收低高
-        mpf.plot_day_summary_oclh(ax1, qutotes, ticksize=5, colorup=__colorup__, colordown=__colordown__)
-    else:
-        # k线图绘制
-        qutotes = []
-        for index, (d, o, c, h, l) in enumerate(zip(date, p_open, close, high, low)):
-            d = index if minute else mpf.date2num(d)
-            val = (d, o, c, h, l)
-            qutotes.append(val)
-        # mpf.candlestick_ochl即数据顺序为开收高低
-        mpf.candlestick_ochl(ax1, qutotes, width=0.6, colorup=__colorup__, colordown=__colordown__)
 
+    if day_sum:
+        quotes = []
+        for index, (d, o, c, l, h) in enumerate(zip(date, p_open, close, low, high)):
+            d = index if minute else date2num(d)
+            val = (d, o, c, l, h)
+            quotes.append(val)
+        quotes_df = pd.DataFrame(quotes, columns=['Date', 'Open', 'Close', 'High', 'Low'])
+        quotes_df.set_index(pd.to_datetime(quotes_df['Date']), inplace=True)
+        quotes_df.drop('Date', axis=1, inplace=True)
+
+        mpf.plot(quotes_df, type='ohlc', style=mpf_style, figratio=(6,6), figscale=1)
+    else:
+        quotes = []
+        for index, (d, o, c, h, l) in enumerate(zip(date, p_open, close, high, low)):
+            d = index if minute else date2num(d)
+            val = (d, o, c, h, l)
+            quotes.append(val)
+        quotes_df = pd.DataFrame(quotes, columns=['Date', 'Open', 'Close', 'High', 'Low'])
+        quotes_df.set_index(pd.to_datetime(quotes_df['Date']), inplace=True)
+        quotes_df.drop('Date', axis=1, inplace=True)
+    
+        mpf.plot(quotes_df, type='candle', style=mpf_style, figratio=(6,6), figscale=1)
+        
     if not g_only_draw_price:
         # 开始绘制成交量
         ax1.set_title(symbol)

@@ -11,7 +11,7 @@ import os
 import matplotlib.cbook as cbook
 import matplotlib.pyplot as plt
 import numpy as np
-from scipy import interp
+from scipy.interpolate import interp1d as interp
 from sklearn import metrics
 from sklearn import tree
 from sklearn.base import ClusterMixin, clone
